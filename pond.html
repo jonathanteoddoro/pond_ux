@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caminho de Menor Custo - Gasistas e Chamados</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        #container {
+            text-align: center;
+        }
+
+        svg {
+            background-color: #f9f9f9;
+            display: block;
+            margin: 0 auto;
+            border: 1px solid #ddd;
+        }
+        
+        .links line {
+            stroke: #ccc;
+            stroke-opacity: 0.6;
+            stroke-width: 1.5px;
+            transition: stroke 0.3s ease;
+        }
+        
+        .links .min-cost-path {
+            stroke: #ff6b6b;
+            stroke-width: 4px;
+            stroke-dasharray: 5,5;
+            animation: dash 10s linear infinite;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: 1000;
+            }
+        }
+        
+        .nodes circle {
+            stroke: #fff;
+            stroke-width: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .nodes circle:hover {
+            stroke-width: 4px;
+            r: 25;
+        }
+        
+        .node-label {
+            font-size: 12px;
+            font-weight: bold;
+            dominant-baseline: central;
+            pointer-events: none;
+        }
+
+        .link-label {
+            font-size: 10px;
+            fill: #333;
+            pointer-events: none;
+        }
+
+        #legend {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>Otimização de Atribuição de Gasistas</h1>
+        <div id="graph"></div>
+        <div id="legend">
+            <h3>Contexto e Objetivo</h3>
+            <p>Passe o mouse sobre os nós para visualizar o caminho de menor custo para atribuição de gasistas aos chamados de serviço.</p>
+        </div>
+    </div>
+
+    <script>
+        // Dados mocados diretamente no script
+        const graphData = {
+            nodesA: ["Gasista 1", "Gasista 2", "Gasista 3", "Gasista 4"],
+            nodesB: ["Chamado 1", "Chamado 2", "Chamado 3"]
+        };
+
+        // Configuração da visualização
+        function createGraph() {
+            // Configurações de visualização
+            const width = 800;
+            const height = 600;
+            
+            // Criação do SVG com suporte a zoom
+            const svg = d3.select("#graph")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .call(d3.zoom()
+                    .scaleExtent([0.5, 5])
+                    .on("zoom", function(event) {
+                        g.attr("transform", event.transform);
+                    }));
+            
+            const g = svg.append("g");
+            
+            // Dados do grafo bipartido
+            const nodesA = graphData.nodesA;
+            const nodesB = graphData.nodesB;
+            
+            // Criar array de nós
+            const nodes = [
+                ...nodesA.map((id, i) => ({ id, group: 1, y: 100 + i * 120 })),
+                ...nodesB.map((id, i) => ({ id, group: 2, y: 150 + i * 120 }))
+            ];
+            
+            // Criar todas as conexões possíveis entre A e B com custos
+            const links = [];
+            for (let a of nodesA) {
+                for (let b of nodesB) {
+                    // Gerar um custo aleatório entre 0.1 e 0.9
+                    const weight = Number((Math.random() * 0.8 + 0.1).toFixed(2));
+                    links.push({ source: a, target: b, weight });
+                }
+            }
+            
+            // Define posições fixas para os nós
+            for (let node of nodes) {
+                node.fx = node.group === 1 ? 150 : width - 150;
+                node.fy = node.y;
+            }
+            
+            // Criação da simulação de forças
+            const simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink(links).id(d => d.id))
+                .force("charge", d3.forceManyBody().strength(-100))
+                .alphaDecay(0.01);
+            
+            // Criação das arestas (links)
+            const link = g.append("g")
+                .attr("class", "links")
+                .selectAll("line")
+                .data(links)
+                .enter()
+                .append("line")
+                .attr("stroke", "#aaa");
+            
+            // Textos nas arestas (pesos)
+            const linkLabels = g.append("g")
+                .selectAll("text")
+                .data(links)
+                .enter()
+                .append("text")
+                .attr("class", "link-label")
+                .text(d => d.weight.toFixed(2));
+            
+            // Criação dos nós
+            const node = g.append("g")
+                .attr("class", "nodes")
+                .selectAll("g")
+                .data(nodes)
+                .enter()
+                .append("g")
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended));
+            
+            // Círculos para os nós
+            const nodeCircles = node.append("circle")
+                .attr("r", 20)
+                .attr("fill", d => d.group === 1 ? "#4682b4" : "#ff0230");
+            
+            // Textos para os nós
+            node.append("text")
+                .attr("class", "node-label")
+                .attr("dx", d => d.group === 1 ? -30 : 30)
+                .attr("text-anchor", d => d.group === 1 ? "end" : "start")
+                .text(d => d.id);
+            
+            // Adiciona eventos de hover para encontrar caminho mínimo
+            nodeCircles.on("mouseenter", function(event, d) {
+                // Reseta links anteriores
+                link.attr("class", "links");
+                
+                // Se for um nó do grupo A (Gasistas)
+                if (d.group === 1) {
+                    // Encontra o caminho de menor custo para este gasista
+                    const minPathLinks = findMinimumCostPathForNode(links, d.id, nodesB);
+                    
+                    // Destaca os links do caminho mínimo
+                    link.attr("class", function(linkD) {
+                        return minPathLinks.some(ml => 
+                            ml.source === linkD.source.id && 
+                            ml.target === linkD.target.id
+                        ) ? "links min-cost-path" : "links";
+                    });
+                }
+            });
+            
+            // Reseta quando o mouse sai
+            nodeCircles.on("mouseleave", function() {
+                link.attr("class", "links");
+            });
+            
+            // Funções de arrasto
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+            
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+            
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+            
+            // Posicionamento dos elementos
+            simulation.on("tick", () => {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+                
+                linkLabels
+                    .attr("x", d => (d.source.x + d.target.x) / 2)
+                    .attr("y", d => (d.source.y + d.target.y) / 2);
+                
+                node
+                    .attr("transform", d => `translate(${d.x},${d.y})`);
+            });
+            
+            // Função para encontrar caminho de menor custo para um nó específico
+            function findMinimumCostPathForNode(links, sourceNode, targetNodes) {
+                const minPathLinks = [];
+                let totalMinCost = Infinity;
+                
+                // Filtra links deste nó fonte
+                const sourceLinks = links.filter(link => link.source === sourceNode);
+                
+                // Para cada nó alvo, encontra o link de menor custo
+                for (let b of targetNodes) {
+                    const cheapestLink = sourceLinks
+                        .filter(link => link.target === b)
+                        .reduce((min, link) => 
+                            (!min || link.weight < min.weight) ? link : min, 
+                            null
+                        );
+                    
+                    if (cheapestLink) {
+                        minPathLinks.push({
+                            source: sourceNode,
+                            target: b,
+                            weight: cheapestLink.weight
+                        });
+                    }
+                }
+                
+                return minPathLinks;
+            }
+        }
+
+        // Chama a função para criar o gráfico
+        createGraph();
+    </script>
+</body>
+</html>
