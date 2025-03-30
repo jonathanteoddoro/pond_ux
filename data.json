@@ -1,0 +1,196 @@
+{
+  "nodesA": [
+    { 
+      "id": "Gasista 1", 
+      "experiencia": "5 anos", 
+      "avaliacao": "4.8/5", 
+      "especialidade": "Instalação", 
+      "disponibilidade": "Imediata", 
+      "regiao": "Zona Sul",
+      "formacao": "Técnico em Gás",
+      "atendimentos": "157 chamados"
+    },
+    { 
+      "id": "Gasista 2", 
+      "experiencia": "3 anos", 
+      "avaliacao": "4.5/5", 
+      "especialidade": "Manutenção", 
+      "disponibilidade": "Em 1h", 
+      "regiao": "Zona Norte",
+      "formacao": "Engenheiro",
+      "atendimentos": "89 chamados"
+    },
+    { 
+      "id": "Gasista 3", 
+      "experiencia": "7 anos", 
+      "avaliacao": "4.9/5", 
+      "especialidade": "Vazamentos", 
+      "disponibilidade": "Imediata", 
+      "regiao": "Zona Oeste",
+      "formacao": "Técnico em Gás",
+      "atendimentos": "243 chamados"
+    },
+    { 
+      "id": "Gasista 4", 
+      "experiencia": "2 anos", 
+      "avaliacao": "4.2/5", 
+      "especialidade": "Instalação", 
+      "disponibilidade": "Em 2h", 
+      "regiao": "Centro",
+      "formacao": "Curso profissionalizante",
+      "atendimentos": "67 chamados"
+    },
+    { 
+      "id": "Gasista 5", 
+      "experiencia": "4 anos", 
+      "avaliacao": "4.6/5", 
+      "especialidade": "Conversão", 
+      "disponibilidade": "Em 30min", 
+      "regiao": "Zona Leste",
+      "formacao": "Técnico em Gás",
+      "atendimentos": "121 chamados"
+    },
+    { 
+      "id": "Gasista 6", 
+      "experiencia": "6 anos", 
+      "avaliacao": "4.7/5", 
+      "especialidade": "Vazamentos", 
+      "disponibilidade": "Imediata", 
+      "regiao": "Zona Sul",
+      "formacao": "Engenheiro",
+      "atendimentos": "198 chamados"
+    },
+    { 
+      "id": "Gasista 7", 
+      "experiencia": "8 anos", 
+      "avaliacao": "4.9/5", 
+      "especialidade": "Conversão", 
+      "disponibilidade": "Em 1h", 
+      "regiao": "Zona Oeste",
+      "formacao": "Técnico em Gás",
+      "atendimentos": "267 chamados"
+    },
+    { 
+      "id": "Gasista 8", 
+      "experiencia": "3 anos", 
+      "avaliacao": "4.4/5", 
+      "especialidade": "Instalação", 
+      "disponibilidade": "Em 45min", 
+      "regiao": "Centro",
+      "formacao": "Curso profissionalizante",
+      "atendimentos": "92 chamados"
+    }
+  ],
+  "nodesB": [
+    { 
+      "id": "Chamado 1", 
+      "urgencia": "Alta", 
+      "tipo": "Vazamento", 
+      "endereco": "Rua A, 123", 
+      "cliente": "João Silva", 
+      "status": "Novo", 
+      "prioridade": "Urgente",
+      "tempo_estimado": "30min",
+      "distancia": "2,5km"
+    },
+    { 
+      "id": "Chamado 2", 
+      "urgencia": "Média", 
+      "tipo": "Instalação", 
+      "endereco": "Av. B, 456", 
+      "cliente": "Maria Oliveira", 
+      "status": "Agendado", 
+      "prioridade": "Normal",
+      "tempo_estimado": "2h",
+      "distancia": "5,7km"
+    },
+    { 
+      "id": "Chamado 3", 
+      "urgencia": "Baixa", 
+      "tipo": "Manutenção", 
+      "endereco": "Rua C, 789", 
+      "cliente": "Pedro Santos", 
+      "status": "Pendente", 
+      "prioridade": "Baixa",
+      "tempo_estimado": "1h30min",
+      "distancia": "3,2km"
+    },
+    { 
+      "id": "Chamado 4", 
+      "urgencia": "Alta", 
+      "tipo": "Conversão", 
+      "endereco": "Av. D, 321", 
+      "cliente": "Ana Costa", 
+      "status": "Novo", 
+      "prioridade": "Alta",
+      "tempo_estimado": "1h45min",
+      "distancia": "4,8km"
+    },
+    { 
+      "id": "Chamado 5", 
+      "urgencia": "Média", 
+      "tipo": "Instalação", 
+      "endereco": "Rua E, 654", 
+      "cliente": "Carlos Mendes", 
+      "status": "Agendado", 
+      "prioridade": "Normal",
+      "tempo_estimado": "2h15min",
+      "distancia": "6,1km"
+    },
+    { 
+      "id": "Chamado 6", 
+      "urgencia": "Alta", 
+      "tipo": "Vazamento", 
+      "endereco": "Av. F, 987", 
+      "cliente": "Lucia Ferreira", 
+      "status": "Novo", 
+      "prioridade": "Urgente",
+      "tempo_estimado": "25min",
+      "distancia": "1,9km"
+    },
+    { 
+      "id": "Chamado 7", 
+      "urgencia": "Baixa", 
+      "tipo": "Inspeção", 
+      "endereco": "Rua G, 159", 
+      "cliente": "Roberto Alves", 
+      "status": "Agendado", 
+      "prioridade": "Baixa",
+      "tempo_estimado": "50min",
+      "distancia": "3,5km"
+    },
+    { 
+      "id": "Chamado 8", 
+      "urgencia": "Média", 
+      "tipo": "Conversão", 
+      "endereco": "Av. H, 753", 
+      "cliente": "Fernanda Lima", 
+      "status": "Novo", 
+      "prioridade": "Normal",
+      "tempo_estimado": "1h20min",
+      "distancia": "4,3km"
+    },
+    { 
+      "id": "Chamado 9", 
+      "urgencia": "Alta", 
+      "tipo": "Instalação", 
+      "endereco": "Rua I, 246", 
+      "cliente": "Marcelo Souza", 
+      "status": "Agendado", 
+      "prioridade": "Alta",
+      "tempo_estimado": "2h30min",
+      "distancia": "7,2km"
+    },
+    { 
+      "id": "Chamado 10", 
+      "urgencia": "Baixa", 
+      "tipo": "Manutenção", 
+      "endereco": "Av. J, 135", 
+      "cliente": "Juliana Campos", 
+      "status": "Pendente", 
+      "prioridade": "Baixa",
+      "tempo_estimado": "1h10min",
+      "distancia": "2,8km"
+    }
+  ]
+}

@@ -27,7 +27,7 @@
         .links line {
             stroke: #ccc;
             stroke-opacity: 0.6;
-            stroke-width: 1.5px;
+            stroke-width: 2.5px; /* Aumentando a largura padrão das linhas */
             transition: stroke 0.3s ease;
         }
         
@@ -36,6 +36,14 @@
             stroke-width: 4px;
             stroke-dasharray: 5,5;
             animation: dash 10s linear infinite;
+        }
+        
+        /* Novo estilo para a aresta de menor peso */
+        .links .min-weight-edge {
+            stroke: #4287f5;
+            stroke-width: 4px;
+            stroke-opacity: 1;
+            transition: stroke-width 0.3s ease;
         }
 
         @keyframes dash {
@@ -69,6 +77,33 @@
             pointer-events: none;
         }
 
+        /* Estilo para o tooltip/informações dos nós */
+        .node-info {
+            position: absolute;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+            max-width: 200px;
+        }
+
+        .node-info h3 {
+            margin-top: 0;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        .node-info p {
+            margin: 5px 0;
+        }
+
         #legend {
             max-width: 800px;
             margin: 20px auto;
@@ -83,6 +118,7 @@
     <div id="container">
         <h1>Otimização de Atribuição de Gasistas</h1>
         <div id="graph"></div>
+        <div id="node-info" class="node-info"></div>
         <div id="legend">
             <h3>Contexto e Objetivo</h3>
             <p>Passe o mouse sobre os nós para visualizar o caminho de menor custo para atribuição de gasistas aos chamados de serviço.</p>
@@ -90,17 +126,30 @@
     </div>
 
     <script>
-        // Dados mocados diretamente no script
-        const graphData = {
-            nodesA: ["Gasista 1", "Gasista 2", "Gasista 3", "Gasista 4"],
-            nodesB: ["Chamado 1", "Chamado 2", "Chamado 3"]
-        };
+        // Carrega dados do arquivo JSON externo
+        d3.json("data.json").then(function(graphData) {
+            createGraph(graphData);
+        }).catch(function(error) {
+            console.error("Erro ao carregar o arquivo JSON:", error);
+            // Fallback para dados mockados em caso de erro (mantendo apenas para segurança, mas simplificando)
+            const fallbackData = {
+                nodesA: [
+                    { id: "Gasista 1", experiencia: "5 anos", avaliacao: "4.8/5", especialidade: "Instalação", disponibilidade: "Imediata" },
+                    { id: "Gasista 2", experiencia: "3 anos", avaliacao: "4.5/5", especialidade: "Manutenção", disponibilidade: "Em 1h" }
+                ],
+                nodesB: [
+                    { id: "Chamado 1", urgencia: "Alta", tipo: "Vazamento", endereco: "Rua A, 123", cliente: "João Silva" },
+                    { id: "Chamado 2", urgencia: "Média", tipo: "Instalação", endereco: "Av. B, 456", cliente: "Maria Oliveira" }
+                ]
+            };
+            createGraph(fallbackData);
+        });
 
         // Configuração da visualização
-        function createGraph() {
+        function createGraph(graphData) {
             // Configurações de visualização
-            const width = 800;
-            const height = 600;
+            const width = 1000; // Aumentando largura para acomodar mais nós
+            const height = 800; // Aumentando altura para acomodar mais nós
             
             // Criação do SVG com suporte a zoom
             const svg = d3.select("#graph")
@@ -119,10 +168,21 @@
             const nodesA = graphData.nodesA;
             const nodesB = graphData.nodesB;
             
-            // Criar array de nós
+            // Criar array de nós com posições iniciais mais espaçadas
+            // Ajustando para maior quantidade de nós
             const nodes = [
-                ...nodesA.map((id, i) => ({ id, group: 1, y: 100 + i * 120 })),
-                ...nodesB.map((id, i) => ({ id, group: 2, y: 150 + i * 120 }))
+                ...nodesA.map((node, i) => ({ 
+                    ...node, 
+                    group: 1, 
+                    x: width * 0.2, 
+                    y: height * (i + 1) / (nodesA.length + 1) * 0.9 + height * 0.05
+                })),
+                ...nodesB.map((node, i) => ({ 
+                    ...node, 
+                    group: 2, 
+                    x: width * 0.8, 
+                    y: height * (i + 1) / (nodesB.length + 1) * 0.9 + height * 0.05
+                }))
             ];
             
             // Criar todas as conexões possíveis entre A e B com custos
@@ -131,21 +191,34 @@
                 for (let b of nodesB) {
                     // Gerar um custo aleatório entre 0.1 e 0.9
                     const weight = Number((Math.random() * 0.8 + 0.1).toFixed(2));
-                    links.push({ source: a, target: b, weight });
+                    links.push({ source: a.id, target: b.id, weight });
                 }
             }
             
-            // Define posições fixas para os nós
-            for (let node of nodes) {
-                node.fx = node.group === 1 ? 150 : width - 150;
-                node.fy = node.y;
-            }
+            // Removendo as posições fixas dos nós
+            // Ao invés de definir posições fixas, usaremos forças para uma melhor distribuição
             
-            // Criação da simulação de forças
+            // Criação da simulação de forças ajustada para mais nós
             const simulation = d3.forceSimulation(nodes)
-                .force("link", d3.forceLink(links).id(d => d.id))
-                .force("charge", d3.forceManyBody().strength(-100))
-                .alphaDecay(0.01);
+                .force("link", d3.forceLink(links)
+                    .id(d => d.id)
+                    .distance(120)) // Ajustado para maior número de nós
+                .force("charge", d3.forceManyBody()
+                    .strength(-400)) // Ligeiramente menor para evitar dispersão excessiva
+                .force("center", d3.forceCenter(width / 2, height / 2)) // Centraliza o grafo
+                .force("x", d3.forceX().x(d => d.group === 1 ? width * 0.2 : width * 0.8).strength(0.7)) // Separa mais os grupos horizontalmente
+                .force("y", d3.forceY().y(d => {
+                    // Distribui os nós verticalmente de forma mais espaçada
+                    const totalNodes = d.group === 1 ? nodesA.length : nodesB.length;
+                    const index = d.group === 1 
+                        ? nodesA.findIndex(n => n.id === d.id) 
+                        : nodesB.findIndex(n => n.id === d.id);
+                    return height * (index + 1) / (totalNodes + 1) * 0.9 + height * 0.05;
+                }).strength(0.2)) // Força vertical mais fraca para permitir melhor dispersão
+                .force("collision", d3.forceCollide().radius(35)) // Raio de colisão um pouco menor
+                .alphaDecay(0.01) // Desaceleração ligeiramente mais lenta
+                .alpha(0.7) // Aumenta energia inicial da simulação
+                .alphaTarget(0);
             
             // Criação das arestas (links)
             const link = g.append("g")
@@ -154,16 +227,46 @@
                 .data(links)
                 .enter()
                 .append("line")
-                .attr("stroke", "#aaa");
+                .attr("stroke", "#aaa")
+                .attr("stroke-width", 2.5); // Definindo uma espessura maior inicialmente
             
-            // Textos nas arestas (pesos)
+            // Otimização para muitos links: não mostrar todos os pesos ao mesmo tempo
+            // Apenas exibir os pesos quando o mouse estiver sobre o link
             const linkLabels = g.append("g")
                 .selectAll("text")
                 .data(links)
                 .enter()
                 .append("text")
                 .attr("class", "link-label")
+                .style("opacity", 0) // Inicialmente invisível
                 .text(d => d.weight.toFixed(2));
+            
+            // Exibir peso quando o mouse passar sobre o link
+            link.on("mouseenter", function(event, d) {
+                d3.select(this)
+                    .classed("min-weight-edge", true)
+                    .transition()
+                    .duration(200)
+                    .attr("stroke-width", 5); // Aumentando a espessura no hover
+                
+                // Encontra e exibe o label correspondente
+                linkLabels.filter(l => l.source === d.source && l.target === d.target)
+                    .transition()
+                    .duration(200)
+                    .style("opacity", 1);
+            }).on("mouseleave", function(event, d) {
+                d3.select(this)
+                    .classed("min-weight-edge", false)
+                    .transition()
+                    .duration(200)
+                    .attr("stroke-width", 2.5); // Voltando para a espessura normal
+                
+                // Esconde o label
+                linkLabels.filter(l => l.source === d.source && l.target === d.target)
+                    .transition()
+                    .duration(200)
+                    .style("opacity", 0);
+            });
             
             // Criação dos nós
             const node = g.append("g")
@@ -177,10 +280,71 @@
                     .on("drag", dragged)
                     .on("end", dragended));
             
-            // Círculos para os nós
+            // Preparar div para informações do nó
+            const nodeInfo = d3.select("#node-info");
+            
+            // Círculos para os nós - tamanho ajustado para melhor visualização com mais dados
             const nodeCircles = node.append("circle")
-                .attr("r", 20)
-                .attr("fill", d => d.group === 1 ? "#4682b4" : "#ff0230");
+                .attr("r", 0)  // Iniciar com raio zero para animar o crescimento
+                .attr("fill", d => d.group === 1 ? "#4682b4" : "#ff0230")
+                .on("mouseover", function(event, d) {
+                    showNodeInfo(event, d);
+                    
+                    // Lógica para destacar o caminho de menor custo
+                    if (d.group === 1) {
+                        // Se for um Gasista (grupo 1), encontra o caminho para o chamado de menor custo
+                        const minPathLinks = findMinimumCostPathForNode(links, d.id, nodesB.map(n => n.id));
+                        
+                        // Destaca os links do caminho mínimo com animação
+                        link
+                            .transition()
+                            .duration(300)
+                            .attr("class", function(linkD) {
+                                return minPathLinks.some(ml => 
+                                    ml.source === linkD.source.id && 
+                                    ml.target === linkD.target.id
+                                ) ? "links min-cost-path" : "links";
+                            });
+                    } else if (d.group === 2) {
+                        // Se for um Chamado (grupo 2), encontra o gasista com menor custo
+                        const minPathLinks = findMinimumCostPathForChamado(links, d.id, nodesA.map(n => n.id));
+                        
+                        // Destaca os links do caminho mínimo com animação
+                        link
+                            .transition()
+                            .duration(300)
+                            .attr("class", function(linkD) {
+                                return minPathLinks.some(ml => 
+                                    ml.source === linkD.source.id && 
+                                    ml.target === linkD.target.id
+                                ) ? "links min-cost-path" : "links";
+                            });
+                    }
+                })
+                .on("mousemove", function(event) {
+                    // Posiciona a info próxima ao mouse
+                    nodeInfo
+                        .style("left", (event.pageX + 15) + "px")
+                        .style("top", (event.pageY - 30) + "px");
+                })
+                .on("mouseout", function() {
+                    // Esconde as informações e reseta os links com animação
+                    hideNodeInfo();
+                    link
+                        .transition()
+                        .duration(300)
+                        .attr("class", "links");
+                });
+                
+            // Animar a entrada dos nós, com delay menor para não demorar muito
+            nodeCircles
+                .transition()
+                .duration(600)
+                .delay((d, i) => i * 50) // Delay menor para muitos nós
+                .attr("r", 15); // Tamanho um pouco menor para acomodar mais nós
+            
+            // Remove os antigos eventos de hover (eles são substituídos pelos novos acima)
+            nodeCircles.on("mouseenter", null).on("mouseleave", null);
             
             // Textos para os nós
             node.append("text")
@@ -228,12 +392,35 @@
             
             function dragended(event, d) {
                 if (!event.active) simulation.alphaTarget(0);
-                d.fx = null;
-                d.fy = null;
+                // Mantém o nó fixo onde o usuário o soltou
+                // NÃO redefina d.fx e d.fy como null
             }
+            
+            // Posicionamento inicial mais espaçado antes de iniciar a simulação
+            nodes.forEach(node => {
+                // Reforça as posições iniciais mais espaçadas
+                node.x = node.group === 1 ? width * 0.2 : width * 0.8;
+                const totalNodes = node.group === 1 ? nodesA.length : nodesB.length;
+                const index = node.group === 1 
+                    ? nodesA.findIndex(n => n.id === node.id) 
+                    : nodesB.findIndex(n => n.id === node.id);
+                node.y = height * (index + 1) / (totalNodes + 1) * 0.8 + height * 0.1;
+            });
             
             // Posicionamento dos elementos
             simulation.on("tick", () => {
+                // Limita a posição dos nós para que não saiam da área visível
+                // e reforça a separação horizontal entre grupos
+                nodes.forEach(node => {
+                    // Limites horizontais com maior separação entre grupos
+                    const minX = node.group === 1 ? 50 : width * 0.6;
+                    const maxX = node.group === 1 ? width * 0.4 : width - 50;
+                    node.x = Math.max(minX, Math.min(maxX, node.x));
+                    
+                    // Limites verticais
+                    node.y = Math.max(50, Math.min(height - 50, node.y));
+                });
+                
                 link
                     .attr("x1", d => d.source.x)
                     .attr("y1", d => d.source.y)
@@ -248,38 +435,245 @@
                     .attr("transform", d => `translate(${d.x},${d.y})`);
             });
             
+            // Adiciona evento de hover nas arestas para destacar as de menor peso e mostrar o peso
+            link.on("mouseenter", function(event, d) {
+                d3.select(this).classed("min-weight-edge", true);
+                
+                // Mostra o label de peso correspondente a este link imediatamente
+                linkLabels.filter(l => 
+                    (l.source === d.source && l.target === d.target) ||
+                    (l.source.id === d.source && l.target.id === d.target)
+                )
+                .style("opacity", 1); // Remove a transição para mostrar imediatamente
+            }).on("mouseleave", function(event, d) {
+                d3.select(this).classed("min-weight-edge", false);
+                
+                // Esconde o label de peso com uma transição suave
+                linkLabels.filter(l => 
+                    (l.source === d.source && l.target === d.target) ||
+                    (l.source.id === d.source && l.target.id === d.target)
+                )
+                .transition()
+                .duration(200)
+                .style("opacity", 0);
+            });
+            
+            // Função para mostrar informações detalhadas do nó
+            function showNodeInfo(event, d) {
+                let infoHTML = `<h3>${d.id}</h3>`;
+                
+                // Conteúdo diferente para cada tipo de nó
+                if (d.group === 1) { // Gasista
+                    infoHTML += `
+                        <p><strong>Experiência:</strong> ${d.experiencia}</p>
+                        <p><strong>Avaliação:</strong> ${d.avaliacao}</p>
+                        <p><strong>Especialidade:</strong> ${d.especialidade}</p>
+                        <p><strong>Disponibilidade:</strong> ${d.disponibilidade}</p>
+                    `;
+                    // Adiciona campo região se existir
+                    if (d.regiao) {
+                        infoHTML += `<p><strong>Região:</strong> ${d.regiao}</p>`;
+                    }
+                } else { // Chamado
+                    infoHTML += `
+                        <p><strong>Urgência:</strong> ${d.urgencia}</p>
+                        <p><strong>Tipo:</strong> ${d.tipo}</p>
+                        <p><strong>Endereço:</strong> ${d.endereco}</p>
+                        <p><strong>Cliente:</strong> ${d.cliente}</p>
+                    `;
+                    // Adiciona campos status e prioridade se existirem
+                    if (d.status) {
+                        infoHTML += `<p><strong>Status:</strong> ${d.status}</p>`;
+                    }
+                    if (d.prioridade) {
+                        infoHTML += `<p><strong>Prioridade:</strong> ${d.prioridade}</p>`;
+                    }
+                }
+                
+                nodeInfo
+                    .html(infoHTML)
+                    .style("left", (event.pageX + 15) + "px")
+                    .style("top", (event.pageY - 30) + "px")
+                    .style("opacity", 1);
+            }
+            
+            // Função para esconder informações do nó com animação
+            function hideNodeInfo() {
+                nodeInfo
+                    .transition()
+                    .duration(300)
+                    .style("opacity", 0);
+            }
+            
             // Função para encontrar caminho de menor custo para um nó específico
             function findMinimumCostPathForNode(links, sourceNode, targetNodes) {
                 const minPathLinks = [];
-                let totalMinCost = Infinity;
                 
                 // Filtra links deste nó fonte
-                const sourceLinks = links.filter(link => link.source === sourceNode);
+                const sourceLinks = links.filter(link => 
+                    link.source === sourceNode);
                 
-                // Para cada nó alvo, encontra o link de menor custo
+                // Para cada nó fonte, encontre apenas o link de menor custo global
+                let overallMinLink = null;
+                let minWeight = Infinity;
+                
                 for (let b of targetNodes) {
-                    const cheapestLink = sourceLinks
-                        .filter(link => link.target === b)
-                        .reduce((min, link) => 
-                            (!min || link.weight < min.weight) ? link : min, 
-                            null
-                        );
+                    const linksToTarget = sourceLinks.filter(link => 
+                        link.target === b);
                     
-                    if (cheapestLink) {
-                        minPathLinks.push({
-                            source: sourceNode,
-                            target: b,
-                            weight: cheapestLink.weight
-                        });
+                    if (linksToTarget.length > 0) {
+                        const cheapestLink = linksToTarget.reduce((min, link) => 
+                            (!min || link.weight < min.weight) ? link : min, null);
+                        
+                        if (cheapestLink && cheapestLink.weight < minWeight) {
+                            minWeight = cheapestLink.weight;
+                            overallMinLink = cheapestLink;
+                        }
                     }
+                }
+                
+                // Adiciona apenas o link de menor custo global
+                if (overallMinLink) {
+                    minPathLinks.push({
+                        source: sourceNode,
+                        target: overallMinLink.target,
+                        weight: overallMinLink.weight
+                    });
                 }
                 
                 return minPathLinks;
             }
+            
+            // Adiciona função para encontrar o caminho de menor custo para um chamado específico
+            function findMinimumCostPathForChamado(links, targetNode, sourceNodes) {
+                const minPathLinks = [];
+                
+                // Para cada chamado (grupo B), encontre o gasista (grupo A) com menor custo
+                let minCostLink = null;
+                let minCost = Infinity;
+                
+                for (let sourceId of sourceNodes) {
+                    // Busca o link específico entre esse gasista e o chamado atual
+                    const link = links.find(l => 
+                        (l.source === sourceId && l.target === targetNode) ||
+                        (l.source.id === sourceId && l.target.id === targetNode));
+                    
+                    if (link && link.weight < minCost) {
+                        minCost = link.weight;
+                        minCostLink = link;
+                    }
+                }
+                
+                // Adiciona apenas o link de menor custo encontrado
+                if (minCostLink) {
+                    // Formata o link para corresponder ao formato esperado na função de destaque
+                    minPathLinks.push({
+                        source: minCostLink.source.id || minCostLink.source,
+                        target: minCostLink.target.id || minCostLink.target,
+                        weight: minCostLink.weight
+                    });
+                }
+                
+                return minPathLinks;
+            }
+            
+            // Adiciona função para encontrar e destacar o link de menor peso global com animação
+            function highlightMinimumWeightEdge() {
+                // Reseta estilos com animação
+                link
+                    .transition()
+                    .duration(300)
+                    .attr("class", "links");
+                
+                // Encontra a aresta com o menor peso
+                let minWeightLink = null;
+                let minWeight = Infinity;
+                
+                links.forEach(l => {
+                    if (l.weight < minWeight) {
+                        minWeight = l.weight;
+                        minWeightLink = l;
+                    }
+                });
+                
+                // Destaca a aresta de menor peso com animação
+                if (minWeightLink) {
+                    link.filter(l => 
+                        (l.source === minWeightLink.source && l.target === minWeightLink.target) ||
+                        (l.source.id === minWeightLink.source && l.target.id === minWeightLink.target)
+                    )
+                    .transition()
+                    .duration(500)
+                    .attr("class", "links min-weight-edge");
+                    
+                    // Piscar o link algumas vezes para chamar atenção
+                    flashLink(minWeightLink);
+                }
+            }
+            
+            // Função para fazer piscar um link específico
+            function flashLink(linkData) {
+                const selectedLink = link.filter(l => 
+                    (l.source === linkData.source && l.target === linkData.target) ||
+                    (l.source.id === linkData.source && l.target.id === linkData.target)
+                );
+                
+                // Sequência de animações para destacar o link
+                selectedLink
+                    .transition()
+                    .duration(300)
+                    .attr("stroke-width", 8) // Aumentando tamanhos das pulsações
+                    .transition()
+                    .duration(300)
+                    .attr("stroke-width", 3) // Aumentando tamanho mínimo da pulsação
+                    .transition()
+                    .duration(300)
+                    .attr("stroke-width", 8) // Aumentando tamanhos das pulsações
+                    .transition()
+                    .duration(300)
+                    .attr("stroke-width", 5); // Estado final com linha mais grossa
+            }
+            
+            // Botão para mostrar o caminho mínimo global com animação de hover
+            const button = svg.append("text")
+                .attr("x", width - 150)
+                .attr("y", 30)
+                .attr("class", "button")
+                .text("Mostrar Menor Custo")
+                .style("cursor", "pointer")
+                .style("font-size", "14px")
+                .style("font-weight", "bold")
+                .on("click", highlightMinimumWeightEdge);
+                
+            // Adicionar animação de hover para o botão
+            button
+                .on("mouseenter", function() {
+                    d3.select(this)
+                        .transition()
+                        .duration(200)
+                        .style("fill", "#ff6b6b");
+                })
+                .on("mouseleave", function() {
+                    d3.select(this)
+                        .transition()
+                        .duration(200)
+                        .style("fill", "#000");
+                });
+                
+            // Título animado para o gráfico
+            svg.append("text")
+                .attr("x", width / 2)
+                .attr("y", 30)
+                .attr("text-anchor", "middle")
+                .style("font-size", "0px")
+                .style("font-weight", "bold")
+                .text("Gasistas x Chamados")
+                .transition()
+                .duration(1000)
+                .style("font-size", "18px");
         }
 
         // Chama a função para criar o gráfico
-        createGraph();
     </script>
 </body>
 </html>
